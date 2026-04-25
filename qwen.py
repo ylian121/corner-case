@@ -1,4 +1,76 @@
 import os
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+from PIL import Image
+import torch
+from qwen_vl_utils import process_vision_info
+
+# Configuration
+MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct" 
+MAX_BATCH_SIZE = 5 
+
+# Load once when imported
+print(f"Loading {MODEL_ID}...")
+model = Qwen2VLForConditionalGeneration.from_pretrained(
+    MODEL_ID,
+    torch_dtype=torch.float16,
+    device_map="auto",
+    trust_remote_code=True
+)
+processor = AutoProcessor.from_pretrained(MODEL_ID, trust_remote_code=True)
+
+def run_inference(image_paths, prompt):
+    """
+    Standardized function to handle multiple images (Batch Size 1, 3, or 5).
+    """
+
+    content = []
+    for path in image_paths:
+        content.append({"type": "image", "image": path})
+    
+    content.append({"type": "text", "text": prompt})
+
+    messages = [
+        {
+            "role": "user",
+            "content": content
+        }
+    ]
+
+    # Qwen-specific template
+    text = processor.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+    image_inputs, video_inputs = process_vision_info(messages)
+    
+    inputs = processor(
+        text=[text],
+        images=image_inputs,
+        videos=video_inputs,
+        padding=True,
+        return_tensors="pt",
+    ).to(model.device)
+
+    # Generate
+    with torch.no_grad():
+        generated_ids = model.generate(
+            **inputs, 
+            max_new_tokens=1024,
+            repetition_penalty=1.2
+        )
+    
+    # Output
+    generated_ids_trimmed = [
+        out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+    ]
+    output_text = processor.batch_decode(
+        generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+    )
+
+    return output_text[0]
+
+
+'''
+import os
 from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
 from PIL import Image
 import torch
@@ -133,3 +205,4 @@ Each triple should end with a period."""
 
 if __name__ == "__main__":
     extract_rdf_from_image("pic.png")
+'''
