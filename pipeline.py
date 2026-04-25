@@ -151,7 +151,3 @@ def _log(msg, fh=None):
     if fh:
         fh.write(msg + "\n")
         fh.flush()
-
-
-
-

@@ -4,6 +4,8 @@ import torch
 
 MODEL_ID = "vikhyatk/moondream2"
 
+MAX_BATCH_SIZE = 1
+
 PROMPT = """Analyze this image and output RDF triples in Turtle format only.
 
 @prefix ex: <http://example.org/scene#> .
@@ -38,6 +40,18 @@ def image_to_rdf(image_path: str) -> str:
     enc_image = model.encode_image(image)
     result = model.answer_question(enc_image, PROMPT, tokenizer)
     return result
+
+def run_inference(image_paths, prompt):
+    """Standardized function for the main script to call."""
+    results = []
+    for path in image_paths:
+        image = Image.open(path).convert("RGB")
+        enc_image = model.encode_image(image)
+        answer = model.answer_question(enc_image, prompt, tokenizer)
+        results.append(answer)
+    
+    # Combine results into one string for the RDF parser
+    return "\n".join(results)
 
 if __name__ == "__main__":
     image_path = "pic.png" 
