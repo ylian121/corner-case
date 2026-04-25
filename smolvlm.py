@@ -1,3 +1,4 @@
+'''
 import argparse
 import torch
 from transformers import AutoProcessor, AutoModelForVision2Seq
@@ -77,3 +78,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+'''
