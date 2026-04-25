@@ -7,15 +7,12 @@
 #            - LIDAR
 
 
-import base64
 import os
 import re
 import glob
-from openai import OpenAI
-from dotenv import load_dotenv
+import torch
 from rdflib import Graph, RDF, RDFS, OWL
 import weather_classifier_inference as uciclassifier
-import re
 import BEV_generator
 
 # import 4 models
