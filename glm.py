@@ -3,6 +3,8 @@ from PIL import Image
 import torch
 import os
 
+MAX_BATCH_SIZE = 1
+
 def extract_with_glm_ocr(image_path):
     
     print("Loading GLM-OCR model...")
