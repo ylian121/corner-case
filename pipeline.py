@@ -37,6 +37,16 @@ BATCH_SIZES     = [1, 3, 5]
 OUTPUT_TXT      = "multi_model_results.txt"
 OUTPUT_CSV      = "multi_model_metrics.csv"
 
+prefixes = """
+@prefix avcco: <http://cornercase.org/avcco#> .
+@prefix ex:    <http://cornercase.org/instances#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+"""
+
 RDF_PROMPT = textwrap.dedent("""
 {prefixes}
 
@@ -141,5 +151,7 @@ def _log(msg, fh=None):
     if fh:
         fh.write(msg + "\n")
         fh.flush()
+
+
 
 
