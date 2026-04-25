@@ -34,10 +34,6 @@ MODELS = {
 
 BATCH_SIZES = [1, 3, 5]
 
-# === Function to encode image as base64 ===
-def encode_image(image_path):
-    with open(image_path, "rb") as img_file:
-        return base64.b64encode(img_file.read()).decode("utf-8")
 
 
 # === Function to extract ontology summary as prompt ===
