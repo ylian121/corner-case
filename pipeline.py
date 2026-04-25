@@ -78,3 +78,68 @@ KNOWN_ENTITIES = {
     "fence", "pole", "window", "wheel", "door", "roof", "ground", "pavement",
 }
 
+
+# required metrics for complete testing
+
+def _ram_mb() -> float:
+    return psutil.Process(os.getpid()).memory_info().rss / 1_048_576
+
+
+def _clean_turtle(raw: str) -> str:
+    if "```turtle" in raw:
+        m = re.search(r"```turtle(.+?)```", raw, re.DOTALL)
+        raw = m.group(1).strip() if m else raw.strip()
+    elif "```" in raw:
+        m = re.search(r"```(.+?)```", raw, re.DOTALL)
+        raw = m.group(1).strip() if m else raw.strip()
+    return raw.replace("ex/", "ex:").strip()
+
+
+def _is_valid_turtle(text: str) -> bool:
+    return bool(text) and ("." in text) and ("ex:" in text or "@prefix" in text)
+
+
+def _token_set(text: str) -> set:
+    return set(re.sub(r"[^a-z0-9]", " ", text.lower()).split())
+
+
+def compute_f1(generated: str, reference: str) -> float:
+    """F1 score between generated output and reference Turtle."""
+    gen = _token_set(generated)
+    ref = _token_set(reference)
+    if not gen or not ref:
+        return 0.0
+    common = gen & ref
+    if not common:
+        return 0.0
+    precision = len(common) / len(gen)
+    recall    = len(common) / len(ref)
+    return 2 * precision * recall / (precision + recall)
+
+
+def compute_hallucination_rate(generated: str) -> float:
+    """Fraction of ex: entity tokens not in KNOWN_ENTITIES."""
+    entities = re.findall(r"ex:([A-Za-z]+)", generated, re.IGNORECASE)
+    if not entities:
+        return 0.0
+    unknown = [e for e in entities if e.lower() not in KNOWN_ENTITIES]
+    return len(unknown) / len(entities)
+
+
+def _free_gpu():
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+def _rgb_only(paths):
+    return [p for p in paths if Path(p).suffix.lower() in (".png", ".jpg", ".jpeg")]
+
+
+def _log(msg, fh=None):
+    print(msg)
+    if fh:
+        fh.write(msg + "\n")
+        fh.flush()
+
+
