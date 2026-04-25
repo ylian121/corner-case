@@ -262,7 +262,7 @@ for model_name, model_mod in MODELS.items():
                 continue
 
             vehicle_folder = os.path.join(weather_folder, "A")
-            if not os.path.isdir(weather_folder):
+            if not os.path.isdir(vehicle_folder):
                 continue
 
             print(f"Processing scenario: {scenario}, weather: {weather}, vehicle: A")
@@ -270,38 +270,34 @@ for model_name, model_mod in MODELS.items():
             rgbs_folder = os.path.join(vehicle_folder, "RGB")
             if not os.path.isdir(rgbs_folder):  # Also check the folder i not empty
                 continue
-            lidar_images_folder = os.path.join(vehicle_folder, "LIDAR")
-            if not os.path.isdir(lidar_images_folder):
-                continue
+
 
             # Use 5 RGB from loop to get the confidence score
             rgb_images = sorted(
                 glob.glob(os.path.join(rgbs_folder, "*.png")) +
                 glob.glob(os.path.join(rgbs_folder, "*.jpg"))
             )
-            # Use first LIDAR images upto loop to get the confidence score
-            lidar_images = sorted(
-                glob.glob(os.path.join(lidar_images_folder, "*.ply"))
-            )
+
 
             while (loop * 5) < len(rgb_images):
 
-                print(f"Loop: {loop}, RGB images: {len(rgb_images)}, LIDAR images: {len(lidar_images)}")
+                # limit
+
+                model_limit = getattr(model_mod, "MAX_BATCH_SIZE", 1)
+
+                print(f"Loop: {loop}, RGB images: {len(rgb_images)}")
 
                 # Get the next 5 RGB images and first loop LIDAR images
-                try:
-                    rgb_images_selected = rgb_images[loop * 5: (loop * 5) + 5]
-                except:
-                    rgb_images_selected = rgb_images[loop * 5:]
+                start_idx = loop * 5
+                selected_images = rgb_images[start_idx : start_idx + model_limit]
 
-                # if len(rgb_images_selected) < 5:
-                #     break
-                lidar_images_selected = [] if loop == 0 else lidar_images[loop - 1:loop]
 
-                selected_images = rgb_images_selected + lidar_images_selected
+                if not selected_images:
+                    break
 
                 # Call the LLM to process the images
-                triples = get_triples_from_llm(selected_images, prompt if not lidar_images_selected else prompt2)
+                triples = get_triples_from_local_model(model_mod, selected_images, prompt)
+
                 print("=== TRIPLES ===")
                 print(triples)
 
@@ -323,15 +319,18 @@ for model_name, model_mod in MODELS.items():
 
                 # parse the triples
                 temp = Graph()
-                temp.parse(data=triples, format='turtle')
+                try:
+                    temp.parse(data=triples, format='turtle')
+                    main_graph = main_graph + temp
+                except Exception as e:
+                    print(f"Could not parse triples for {model_name}: {e}")
 
                 # Add to the main graph and exit the loop
-                main_graph = main_graph + temp
+                # main_graph = main_graph + temp
                 print(f"main graph has {len(main_graph)} triples.")
 
-                loop_output_path = os.path.join("output", scenario, weather, str(loop + 1))
-                if not os.path.exists(loop_output_path):
-                    os.makedirs(os.path.join(loop_output_path))
+                loop_output_path = os.path.join("output", model_name, scenario, weather, str(loop + 1))
+                os.makedirs(loop_output_path, exist_ok=True)
 
                 # Save the triples to a TTL file
                 loop_output_file = os.path.join(loop_output_path, f"vehicle_A_observations_loop.ttl")
@@ -343,15 +342,7 @@ for model_name, model_mod in MODELS.items():
                 main_graph.serialize(destination=main_output_file, format='turtle')
                 print(f"Main graph with {len(main_graph)} triples saved to {main_output_file}.")
 
-                # if adjusted_score >= 0.85:
-                #     print(f"High confidence score: {adjusted_score}. Exiting the loop.")
-                #     break
-                # else:
-                #     print(f"Low confidence score: {adjusted_score}. Continuing to next loop.")
-                #     loop += 1
-                #     continue
-
                 print(f"Confidence score: {adjusted_score}. Continuing to next loop.")
                 loop += 1
-                continue
+    
 
