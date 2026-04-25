@@ -22,6 +22,71 @@ import moondream
 import glm
 import smolvlm
 
+import time
+import psutil
+
+
+class BenchmarkTracker:
+    def __init__(self, ontology_path):
+        self.ontology = Graph().parse(ontology_path, format="turtle")
+        self.ontology_predicates = set(self.ontology.predicates())
+        
+    def calculate_quality(self, generated_graph, ground_truth_graph=None):
+        """Calculates Ontology Compliance and F1 """
+        gen_triples = set(generated_graph)
+        
+        # 1. Ontology Compliance (How many predicates are actually in your TTL file?)
+        if len(gen_triples) == 0:
+            compliance = 0.0
+        else:
+            valid_triples = sum(1 for _, p, _ in gen_triples if p in self.ontology_predicates)
+            compliance = (valid_triples / len(gen_triples)) * 100
+
+        # 2. F1 Score
+        f1_score = 0.0
+        if ground_truth_graph:
+            gt_triples = set(ground_truth_graph)
+            tp = len(gen_triples.intersection(gt_triples))
+            fp = len(gen_triples - gt_triples)
+            fn = len(gt_triples - gen_set)
+            
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+        # 3. Hallucination Rate
+        hallucination_rate = 100.0 - compliance
+        
+        return round(f1_score, 3), round(hallucination_rate, 2), round(compliance, 2)
+
+    def get_system_usage(self):
+        """Capture RAM and VRAM usage."""
+        ram_usage = psutil.virtual_memory().percent
+        vram_usage = 0
+        if torch.cuda.is_available():
+            vram_usage = torch.cuda.memory_allocated() / 1024**2 # Convert to MB
+        return ram_usage, round(vram_usage, 2)
+
+    def summarize_scenario(self, model_name, batch_size, loop_data):
+        """Formats the data into your requested table structure."""
+        total_loops = len(loop_data)
+        successes = sum(1 for d in loop_data if d['status'] == 'success')
+        
+        summary = {
+            "Model": model_name,
+            "Batch Size": batch_size,
+            "Avg Latency (s)": round(sum(d['latency'] for d in loop_data) / total_loops, 2),
+            "CPU Time (s)": round(sum(d['cpu_time'] for d in loop_data), 2),
+            "RAM Usage (%)": f"{sum(d['ram'] for d in loop_data) / total_loops}%",
+            "Success Rate": f"{(successes/total_loops)*100}%",
+            "Avg F1 Score": round(sum(d['f1'] for d in loop_data) / total_loops, 3),
+            "Hallucination Rate": f"{round(sum(d['halluc'] for d in loop_data) / total_loops, 2)}%",
+            "Ontology Compliance": f"{round(sum(d['comp'] for d in loop_data) / total_loops, 2)}%",
+            "Success Calls": successes,
+            "Failed Calls": total_loops - successes
+        }
+        return summary
+
 
 MODELS = {
     "Qwen": qwen,
@@ -189,6 +254,7 @@ def get_triples_from_local_model(model_mod, image_paths, prompt_text):
 
 
 
+
 # === Paths ===
 scenarios_folder = r"CARLA_DATASET_MULTI_AGENTS"
 ttl_path = r"avcc_with_reasoning_no_shacl.ttl"
@@ -242,9 +308,12 @@ Ontology reference:
 """
 
 
+tracker = BenchmarkTracker(ttl_path)
 
 # For each scenario in the root
 for model_name, model_mod in MODELS.items():
+
+    scenario_stats = []
 
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -296,19 +365,46 @@ for model_name, model_mod in MODELS.items():
                     start_idx = loop * model_limit
                     selected_images = rgb_images[start_idx : start_idx + model_limit]
 
+                    t0 = time.time()
+                    cpu0 = time.process_time()
+                    ram, vram = tracker.get_system_usage()
 
-                    if not selected_images:
-                        break
 
-                    # Call the LLM to process the images
-                    triples = get_triples_from_local_model(model_mod, selected_images, prompt)
+                    try:
+                        triples = get_triples_from_local_model(model_mod, selected_images, prompt)
+                        status = "success"
+                    except Exception as e:
+                        print(f"Inference failed: {e}")
+                        triples = ""
+                        status = "failed"
 
-                    print("=== TRIPLES ===")
-                    print(triples)
+                # 4. CAPTURE METRICS
+                latency = time.time() - t0
+                cpu_time = time.process_time() - cpu0
 
                     # Add prefixes if not present
                     if not triples.startswith("@prefix"):
                         triples = prefixes + "\n" + triples
+
+                    
+                    temp = Graph()
+                    try:
+                        if triples:
+                            temp.parse(data=triples, format='turtle')
+                        f1, halluc, compliance = tracker.calculate_quality(temp)
+                    except:
+                        f1, halluc, compliance = 0.0, 100.0, 0.0
+
+                    # Store metrics
+                    model_stats.append({
+                        "latency": latency,
+                        "cpu_time": cpu_time,
+                        "ram": ram,
+                        "f1": f1,
+                        "halluc": halluc,
+                        "comp": compliance,
+                        "status": status
+                    })
 
                     avg_confidence_score = compute_avg_confidence_score(triples)
                     if avg_confidence_score is None:
@@ -349,6 +445,9 @@ for model_name, model_mod in MODELS.items():
 
                     print(f"Confidence score: {adjusted_score}. Continuing to next loop.")
                     loop += 1
+
+    report = tracker.summarize_scenario(model_name, model_limit, scenario_stats)
+    print(report)
 
     
 
