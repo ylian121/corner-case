@@ -108,6 +108,32 @@ Example:
     
     return output_text
 
+# standard fn
+def run_inference(image_paths, prompt):
+    results = []
+    for path in image_paths:
+        image = Image.open(path).convert("RGB")
+        # GLM-OCR specific message format
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": image},
+                    {"type": "text", "text": prompt}
+                ]
+            }
+        ]
+        # the specific GLM processor template
+        inputs = processor.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt").to(model.device)
+        
+        with torch.no_grad():
+            output = model.generate(**inputs, max_new_tokens=512)
+        
+        decoded = processor.decode(output[0], skip_special_tokens=True)
+        results.append(decoded)
+    
+    return "\n".join(results)
+
 if __name__ == "__main__":
     # Use image
     image_path = "pic.png"
