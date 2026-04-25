@@ -243,112 +243,115 @@ Ontology reference:
 
 
 # For each scenario in the root
-for scenario in os.listdir(scenarios_folder):
-    scenario_folder = os.path.join(scenarios_folder, scenario)
-    if not os.path.isdir(scenario_folder):
-        continue
-
-    # For each weather in the scenario
-    for weather in os.listdir(scenario_folder):
-        main_graph = Graph()
-        loop = 0  # first loop images start from 0 and 0 lidar images
-        adjusted_score = 0.0
-
-        weather_folder = os.path.join(scenario_folder, weather)
-        if not os.path.isdir(weather_folder):
+for model_name, model_mod in MODELS.items():
+    print(f"\nRunning model: {model_name}")
+    print("\n")
+    for scenario in os.listdir(scenarios_folder):
+        scenario_folder = os.path.join(scenarios_folder, scenario)
+        if not os.path.isdir(scenario_folder):
             continue
 
-        vehicle_folder = os.path.join(weather_folder, "A")
-        if not os.path.isdir(weather_folder):
-            continue
+        # For each weather in the scenario
+        for weather in os.listdir(scenario_folder):
+            main_graph = Graph()
+            loop = 0  # first loop images start from 0 and 0 lidar images
+            adjusted_score = 0.0
 
-        print(f"Processing scenario: {scenario}, weather: {weather}, vehicle: A")
+            weather_folder = os.path.join(scenario_folder, weather)
+            if not os.path.isdir(weather_folder):
+                continue
 
-        rgbs_folder = os.path.join(vehicle_folder, "RGB")
-        if not os.path.isdir(rgbs_folder):  # Also check the folder i not empty
-            continue
-        lidar_images_folder = os.path.join(vehicle_folder, "LIDAR")
-        if not os.path.isdir(lidar_images_folder):
-            continue
+            vehicle_folder = os.path.join(weather_folder, "A")
+            if not os.path.isdir(weather_folder):
+                continue
 
-        # Use 5 RGB from loop to get the confidence score
-        rgb_images = sorted(
-            glob.glob(os.path.join(rgbs_folder, "*.png")) +
-            glob.glob(os.path.join(rgbs_folder, "*.jpg"))
-        )
-        # Use first LIDAR images upto loop to get the confidence score
-        lidar_images = sorted(
-            glob.glob(os.path.join(lidar_images_folder, "*.ply"))
-        )
+            print(f"Processing scenario: {scenario}, weather: {weather}, vehicle: A")
 
-        while (loop * 5) < len(rgb_images):
+            rgbs_folder = os.path.join(vehicle_folder, "RGB")
+            if not os.path.isdir(rgbs_folder):  # Also check the folder i not empty
+                continue
+            lidar_images_folder = os.path.join(vehicle_folder, "LIDAR")
+            if not os.path.isdir(lidar_images_folder):
+                continue
 
-            print(f"Loop: {loop}, RGB images: {len(rgb_images)}, LIDAR images: {len(lidar_images)}")
+            # Use 5 RGB from loop to get the confidence score
+            rgb_images = sorted(
+                glob.glob(os.path.join(rgbs_folder, "*.png")) +
+                glob.glob(os.path.join(rgbs_folder, "*.jpg"))
+            )
+            # Use first LIDAR images upto loop to get the confidence score
+            lidar_images = sorted(
+                glob.glob(os.path.join(lidar_images_folder, "*.ply"))
+            )
 
-            # Get the next 5 RGB images and first loop LIDAR images
-            try:
-                rgb_images_selected = rgb_images[loop * 5: (loop * 5) + 5]
-            except:
-                rgb_images_selected = rgb_images[loop * 5:]
+            while (loop * 5) < len(rgb_images):
 
-            # if len(rgb_images_selected) < 5:
-            #     break
-            lidar_images_selected = [] if loop == 0 else lidar_images[loop - 1:loop]
+                print(f"Loop: {loop}, RGB images: {len(rgb_images)}, LIDAR images: {len(lidar_images)}")
 
-            selected_images = rgb_images_selected + lidar_images_selected
+                # Get the next 5 RGB images and first loop LIDAR images
+                try:
+                    rgb_images_selected = rgb_images[loop * 5: (loop * 5) + 5]
+                except:
+                    rgb_images_selected = rgb_images[loop * 5:]
 
-            # Call the LLM to process the images
-            triples = get_triples_from_llm(selected_images, prompt if not lidar_images_selected else prompt2)
-            print("=== TRIPLES ===")
-            print(triples)
+                # if len(rgb_images_selected) < 5:
+                #     break
+                lidar_images_selected = [] if loop == 0 else lidar_images[loop - 1:loop]
 
-            # Add prefixes if not present
-            if not triples.startswith("@prefix"):
-                triples = prefixes + "\n" + triples
+                selected_images = rgb_images_selected + lidar_images_selected
 
-            avg_confidence_score = compute_avg_confidence_score(triples)
-            if avg_confidence_score is None:
-                avg_confidence_score = 0.0
-            avg_classifier_score = compute_avg_classifier_score(selected_images)
-            if avg_classifier_score is None:
-                avg_classifier_score = 1.0
+                # Call the LLM to process the images
+                triples = get_triples_from_llm(selected_images, prompt if not lidar_images_selected else prompt2)
+                print("=== TRIPLES ===")
+                print(triples)
 
-            print(f"Average Confidence Score: {avg_confidence_score}, Classifier Score: {avg_classifier_score}")
-            # Calculate the total average score
-            adjusted_score = avg_confidence_score / avg_classifier_score
-            print("The adjusted score", adjusted_score)
+                # Add prefixes if not present
+                if not triples.startswith("@prefix"):
+                    triples = prefixes + "\n" + triples
 
-            # parse the triples
-            temp = Graph()
-            temp.parse(data=triples, format='turtle')
+                avg_confidence_score = compute_avg_confidence_score(triples)
+                if avg_confidence_score is None:
+                    avg_confidence_score = 0.0
+                avg_classifier_score = compute_avg_classifier_score(selected_images)
+                if avg_classifier_score is None:
+                    avg_classifier_score = 1.0
 
-            # Add to the main graph and exit the loop
-            main_graph = main_graph + temp
-            print(f"main graph has {len(main_graph)} triples.")
+                print(f"Average Confidence Score: {avg_confidence_score}, Classifier Score: {avg_classifier_score}")
+                # Calculate the total average score
+                adjusted_score = avg_confidence_score / avg_classifier_score
+                print("The adjusted score", adjusted_score)
 
-            loop_output_path = os.path.join("output", scenario, weather, str(loop + 1))
-            if not os.path.exists(loop_output_path):
-                os.makedirs(os.path.join(loop_output_path))
+                # parse the triples
+                temp = Graph()
+                temp.parse(data=triples, format='turtle')
 
-            # Save the triples to a TTL file
-            loop_output_file = os.path.join(loop_output_path, f"vehicle_A_observations_loop.ttl")
-            temp.serialize(destination=loop_output_file, format='turtle')
-            print(f"Loop graph with {len(temp)} triples saved to {loop_output_file}.")
+                # Add to the main graph and exit the loop
+                main_graph = main_graph + temp
+                print(f"main graph has {len(main_graph)} triples.")
 
-            # Save the main graph to a TTL file
-            main_output_file = os.path.join(loop_output_path, "vehicle_A_observations.ttl")
-            main_graph.serialize(destination=main_output_file, format='turtle')
-            print(f"Main graph with {len(main_graph)} triples saved to {main_output_file}.")
+                loop_output_path = os.path.join("output", scenario, weather, str(loop + 1))
+                if not os.path.exists(loop_output_path):
+                    os.makedirs(os.path.join(loop_output_path))
 
-            # if adjusted_score >= 0.85:
-            #     print(f"High confidence score: {adjusted_score}. Exiting the loop.")
-            #     break
-            # else:
-            #     print(f"Low confidence score: {adjusted_score}. Continuing to next loop.")
-            #     loop += 1
-            #     continue
+                # Save the triples to a TTL file
+                loop_output_file = os.path.join(loop_output_path, f"vehicle_A_observations_loop.ttl")
+                temp.serialize(destination=loop_output_file, format='turtle')
+                print(f"Loop graph with {len(temp)} triples saved to {loop_output_file}.")
 
-            print(f"Confidence score: {adjusted_score}. Continuing to next loop.")
-            loop += 1
-            continue
+                # Save the main graph to a TTL file
+                main_output_file = os.path.join(loop_output_path, "vehicle_A_observations.ttl")
+                main_graph.serialize(destination=main_output_file, format='turtle')
+                print(f"Main graph with {len(main_graph)} triples saved to {main_output_file}.")
+
+                # if adjusted_score >= 0.85:
+                #     print(f"High confidence score: {adjusted_score}. Exiting the loop.")
+                #     break
+                # else:
+                #     print(f"Low confidence score: {adjusted_score}. Continuing to next loop.")
+                #     loop += 1
+                #     continue
+
+                print(f"Confidence score: {adjusted_score}. Continuing to next loop.")
+                loop += 1
+                continue
 
