@@ -211,10 +211,6 @@ def get_triples_from_llm(image_paths, prompt):
         return raw_output.strip().replace("ex/", "ex:") if raw_output else ""
 
 
-# === Load environment variables ===
-load_dotenv(dotenv_path=r"/Users/qamber/Documents/Work/CodeMentor/Mecko/20250914/.venv")
-api_key = os.getenv('API_KEY')
-client = OpenAI(api_key=api_key)
 
 # === Paths ===
 scenarios_folder = r"CARLA_DATASET_MULTI_AGENTS"
