@@ -14,7 +14,6 @@ import gc
 import torch
 from rdflib import Graph, RDF, RDFS, OWL
 import weather_classifier_inference as uciclassifier
-import BEV_generator
 
 # import 4 models
 import qwen

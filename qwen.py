@@ -8,14 +8,21 @@ from qwen_vl_utils import process_vision_info
 MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct" 
 MAX_BATCH_SIZE = 5 
 
+quantization_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_compute_dtype=torch.float16
+)
 # Load once when imported
 print(f"Loading {MODEL_ID}...")
+
 model = Qwen2VLForConditionalGeneration.from_pretrained(
     MODEL_ID,
+    quantization_config=quantization_config,
     torch_dtype=torch.float16,
     device_map="auto",
     trust_remote_code=True
 )
+
 processor = AutoProcessor.from_pretrained(MODEL_ID, trust_remote_code=True)
 
 def run_inference(image_paths, prompt):
