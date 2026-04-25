@@ -18,6 +18,11 @@ import weather_classifier_inference as uciclassifier
 import re
 import BEV_generator
 
+# import 4 models
+import qwen
+import moondream
+import glm
+import smolvlm
 
 # === Function to encode image as base64 ===
 def encode_image(image_path):
