@@ -24,6 +24,16 @@ import moondream
 import glm
 import smolvlm
 
+
+MODELS = {
+    "Qwen": qwen,
+    "Moondream": moondream,
+    "GLM-OCR": glm,
+    "SmolVLM": smolvlm
+}
+
+BATCH_SIZES = [1, 3, 5]
+
 # === Function to encode image as base64 ===
 def encode_image(image_path):
     with open(image_path, "rb") as img_file:
