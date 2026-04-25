@@ -235,7 +235,7 @@ def get_triples_from_local_model(model_mod, image_paths, prompt_text):
         raw_output = model_mod.run_inference(rgb_image_paths, prompt_text)
 
         if not raw_output:
-        return ""
+            return ""
 
         if "```turtle" in raw_output:
             triples = re.search('```turtle(.+?)```', raw_output, re.DOTALL)
@@ -358,93 +358,92 @@ for model_name, model_mod in MODELS.items():
 
 
                 # Get the next 5 RGB images and first loop LIDAR images
-                while (loop * model_limit) < len(rgb_images):
+            while (loop * model_limit) < len(rgb_images):
 
-                    print(f"Loop: {loop}, RGB images: {len(rgb_images)}")
+                print(f"Loop: {loop}, RGB images: {len(rgb_images)}")
 
-                    start_idx = loop * model_limit
-                    selected_images = rgb_images[start_idx : start_idx + model_limit]
+                start_idx = loop * model_limit
+                selected_images = rgb_images[start_idx : start_idx + model_limit]
 
-                    t0 = time.time()
-                    cpu0 = time.process_time()
-                    ram, vram = tracker.get_system_usage()
+                t0 = time.time()
+                cpu0 = time.process_time()
+                ram, vram = tracker.get_system_usage()
 
 
-                    try:
-                        triples = get_triples_from_local_model(model_mod, selected_images, prompt)
-                        status = "success"
-                    except Exception as e:
-                        print(f"Inference failed: {e}")
-                        triples = ""
-                        status = "failed"
+                try:
+                    triples = get_triples_from_local_model(model_mod, selected_images, prompt)
+                    status = "success"
+                except Exception as e:
+                    print(f"Inference failed: {e}")
+                    triples = ""
+                    status = "failed"
 
-                # 4. CAPTURE METRICS
                 latency = time.time() - t0
                 cpu_time = time.process_time() - cpu0
 
                     # Add prefixes if not present
-                    if not triples.startswith("@prefix"):
-                        triples = prefixes + "\n" + triples
+                if not triples.startswith("@prefix"):
+                    triples = prefixes + "\n" + triples
 
                     
-                    temp = Graph()
-                    try:
-                        if triples:
-                            temp.parse(data=triples, format='turtle')
-                        f1, halluc, compliance = tracker.calculate_quality(temp)
-                    except:
-                        f1, halluc, compliance = 0.0, 100.0, 0.0
+                temp = Graph()
+                try:
+                    if triples:
+                        temp.parse(data=triples, format='turtle')
+                    f1, halluc, compliance = tracker.calculate_quality(temp)
+                except:
+                    f1, halluc, compliance = 0.0, 100.0, 0.0
 
                     # Store metrics
-                    model_stats.append({
-                        "latency": latency,
-                        "cpu_time": cpu_time,
-                        "ram": ram,
-                        "f1": f1,
-                        "halluc": halluc,
-                        "comp": compliance,
-                        "status": status
-                    })
+                model_stats.append({
+                    "latency": latency,
+                    "cpu_time": cpu_time,
+                    "ram": ram,
+                    "f1": f1,
+                    "halluc": halluc,
+                    "comp": compliance,
+                    "status": status
+                })
 
-                    avg_confidence_score = compute_avg_confidence_score(triples)
-                    if avg_confidence_score is None:
-                        avg_confidence_score = 0.0
-                    avg_classifier_score = compute_avg_classifier_score(selected_images)
-                    if avg_classifier_score is None:
-                        avg_classifier_score = 1.0
+                avg_confidence_score = compute_avg_confidence_score(triples)
+                if avg_confidence_score is None:
+                    avg_confidence_score = 0.0
+                avg_classifier_score = compute_avg_classifier_score(selected_images)
+                if avg_classifier_score is None:
+                    avg_classifier_score = 1.0
 
-                    print(f"Average Confidence Score: {avg_confidence_score}, Classifier Score: {avg_classifier_score}")
+                print(f"Average Confidence Score: {avg_confidence_score}, Classifier Score: {avg_classifier_score}")
                     # Calculate the total average score
-                    adjusted_score = avg_confidence_score / avg_classifier_score
-                    print("The adjusted score", adjusted_score)
+                adjusted_score = avg_confidence_score / avg_classifier_score
+                print("The adjusted score", adjusted_score)
 
                     # parse the triples
-                    temp = Graph()
-                    try:
-                        temp.parse(data=triples, format='turtle')
-                        main_graph = main_graph + temp
-                    except Exception as e:
-                        print(f"Could not parse triples for {model_name}: {e}")
+                temp = Graph()
+                try:
+                    temp.parse(data=triples, format='turtle')
+                    main_graph = main_graph + temp
+                except Exception as e:
+                    print(f"Could not parse triples for {model_name}: {e}")
 
                     # Add to the main graph and exit the loop
                     # main_graph = main_graph + temp
-                    print(f"main graph has {len(main_graph)} triples.")
+                print(f"main graph has {len(main_graph)} triples.")
 
-                    loop_output_path = os.path.join("output", model_name, scenario, weather, str(loop + 1))
-                    os.makedirs(loop_output_path, exist_ok=True)
+                loop_output_path = os.path.join("output", model_name, scenario, weather, str(loop + 1))
+                os.makedirs(loop_output_path, exist_ok=True)
 
                     # Save the triples to a TTL file
-                    loop_output_file = os.path.join(loop_output_path, f"vehicle_A_observations_loop.ttl")
-                    temp.serialize(destination=loop_output_file, format='turtle')
-                    print(f"Loop graph with {len(temp)} triples saved to {loop_output_file}.")
+                loop_output_file = os.path.join(loop_output_path, f"vehicle_A_observations_loop.ttl")
+                temp.serialize(destination=loop_output_file, format='turtle')
+                print(f"Loop graph with {len(temp)} triples saved to {loop_output_file}.")
 
                     # Save the main graph to a TTL file
-                    main_output_file = os.path.join(loop_output_path, "vehicle_A_observations.ttl")
-                    main_graph.serialize(destination=main_output_file, format='turtle')
-                    print(f"Main graph with {len(main_graph)} triples saved to {main_output_file}.")
+                main_output_file = os.path.join(loop_output_path, "vehicle_A_observations.ttl")
+                main_graph.serialize(destination=main_output_file, format='turtle')
+                print(f"Main graph with {len(main_graph)} triples saved to {main_output_file}.")
 
-                    print(f"Confidence score: {adjusted_score}. Continuing to next loop.")
-                    loop += 1
+                print(f"Confidence score: {adjusted_score}. Continuing to next loop.")
+                loop += 1
 
     report = tracker.summarize_scenario(model_name, model_limit, scenario_stats)
     print(report)
