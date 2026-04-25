@@ -276,7 +276,7 @@ for model_name, model_mod in MODELS.items():
 
             print(f"Processing scenario: {scenario}, weather: {weather}, vehicle: A")
 
-            rgbs_folder = os.path.join(vehicle_folder, "RGB")
+            rgbs_folder = os.path.join(vehicle_folder, "rgb")
             if not os.path.isdir(rgbs_folder):  # Also check the folder i not empty
                 continue
 
