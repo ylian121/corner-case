@@ -147,49 +147,9 @@ def compute_avg_classifier_score(image_paths):
     return total_weighted_score / valid_image_count if valid_image_count > 0 else 0.0
 
 
-def get_triples_from_llm(image_paths, prompt):
-    # Prepare the image blocks
-    rgb_image_paths = [image_path for image_path in image_paths if
-                       image_path.lower().endswith(('.png', '.jpg', '.jpeg'))]
+def get_triples_from_local_model(model_mod, image_paths, prompt_text):
 
-    rgb_image_blocks = [
-        {
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:image/png;base64,{encode_image(path)}"
-            },
-        }
-        for path in rgb_image_paths
-    ]
-
-    try:
-        lidar_image_path = [image_path for image_path in image_paths if image_path.lower().endswith('.ply')]
-        if lidar_image_path:
-            bev_image_path = BEV_generator.convert_ply_to_png(lidar_image_path[0])
-            bev_image_blocks = [{
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/png;base64,{encode_image(bev_image_path)}"
-                },
-            }]
-
-    except Exception as e:
-        print(f"Error generating BEV image: {e}")
-        bev_image_blocks = []
-
-    image_blocks = rgb_image_blocks + bev_image_blocks if lidar_image_path else rgb_image_blocks
-    content = [{"type": "text", "text": prompt}] + image_blocks
-
-    # === GPT-4 Vision API Call ===
-    response = client.chat.completions.create(
-        model="gpt-4.1",
-        messages=[{"role": "user", "content": content}],
-        max_tokens=1000
-    )
-
-    raw_output = response.choices[0].message.content
-    print("=== RAW TTL ===")
-    print(raw_output)
+    # Standardized bridge to call local models and clean the Turtle output.
 
     # triples = open("raw_output.ttl", "w")
     # triples_file.write(raw_output.strip())
@@ -201,14 +161,30 @@ def get_triples_from_llm(image_paths, prompt):
     # 2. Remove any text before or after the triples
     # 3. Handle both ```turtle and ```
     # 4. Handle spaces before comments.
-    if "```turtle" in raw_output:
-        triples = re.search('```turtle(.+?)```', raw_output, re.DOTALL)
-        return triples.group(1).strip().replace("ex/", "ex:") if triples else raw_output.strip().replace("ex/", "ex:")
-    elif "```" in raw_output:
-        triples = re.search('```(.+?)```', raw_output, re.DOTALL)
-        return triples.group(1).strip().replace("ex/", "ex:") if triples else raw_output.strip().replace("ex/", "ex:")
-    else:
-        return raw_output.strip().replace("ex/", "ex:") if raw_output else ""
+    try:
+        # only RGB images 
+        rgb_image_paths = [p for p in image_paths if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        
+        # Call the local model's standardized inference function
+        raw_output = model_mod.run_inference(rgb_image_paths, prompt_text)
+
+        if not raw_output:
+        return ""
+
+        if "```turtle" in raw_output:
+            triples = re.search('```turtle(.+?)```', raw_output, re.DOTALL)
+            clean_output = triples.group(1).strip() if triples else raw_output
+        elif "```" in raw_output:
+            triples = re.search('```(.+?)```', raw_output, re.DOTALL)
+            clean_output = triples.group(1).strip() if triples else raw_output
+        else:
+            clean_output = raw_output.strip()
+            
+        return clean_output.replace("ex/", "ex:") if clean_output else ""
+
+    except Exception as e:
+        print(f"Error calling {model_mod.__name__}: {e}")
+        return ""
 
 
 
