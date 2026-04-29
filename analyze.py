@@ -23,15 +23,13 @@ all_results = []
 for ttl_path in sorted(ttl_files):
     parts = ttl_path.split(os.sep)
     
-    # Adjusting based on your screenshot structure:
-    # output/Qwen/bus_obscuring_car/day/1/file.ttl
+    
     if len(parts) < 4: continue
     
     scenario = parts[2]
     weather  = parts[3]
 
-    # Change this line if your GT is just in ground_truth/day/
-    # If GT is in ground_truth/bus_obscuring_car/day/, keep scenario in path.
+    # get the ground truth set
     gt_path = os.path.join("ground_truth", weather, "ground_truth.ttl")
 
     g = Graph()

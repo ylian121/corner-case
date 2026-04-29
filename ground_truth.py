@@ -24,7 +24,7 @@ def create_comprehensive_gt(weather_type):
     # === WEATHER OBSERVATIONS ===
     g.add((EX.WeatherObs1, RDF.type, AVCCO.Observation))
     g.add((EX.WeatherObs1, AVCCO.hasConfidenceScore, Literal(0.9)))
-    # FIXED: Changed 'prov' to 'PROV' to resolve NameError
+    # Changed 'prov' to 'PROV' to resolve NameError
     g.add((EX.WeatherObs1, PROV.wasGeneratedBy, EX.vehicleA_activity_1))
 
     if weather_type == "fog":
@@ -55,7 +55,6 @@ def create_comprehensive_gt(weather_type):
     g.add((EX.Obs1, PROV.wasGeneratedBy, EX.vehicleA_activity_1))
 
     # === BLACK CAR (Occluded SUV) ===
-    # Using 'ex:Cars' to match your manual examples for better F1 score
     g.add((EX.Cars, RDF.type, AVCCO.Car))
     g.add((EX.Cars, AVCCO.hasColor, Literal("black")))
     g.add((EX.Cars, AVCCO.isOccludedBy, EX.Bus1))
