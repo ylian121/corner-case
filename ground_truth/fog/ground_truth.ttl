@@ -1,0 +1,42 @@
+@prefix avcco: <http://cornercase.org/avcco#> .
+@prefix ex: <http://cornercase.org/instances#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:Obs1 a avcco:Observation ;
+    avcco:hasConfidenceScore 8.5e-01 ;
+    avcco:refersTo ex:Car1 ;
+    prov:wasGeneratedBy ex:vehicleA_activity_1 .
+
+ex:Obs2 a avcco:Observation ;
+    avcco:hasConfidenceScore 7.5e-01 ;
+    avcco:refersTo ex:Bus1 ;
+    prov:wasGeneratedBy ex:vehicleA_activity_1 .
+
+ex:Obs3 a avcco:Observation ;
+    avcco:hasConfidenceScore 6.5e-01 ;
+    avcco:refersTo ex:Cars ;
+    prov:wasGeneratedBy ex:vehicleA_activity_1 .
+
+ex:WeatherObs1 a avcco:Observation ;
+    avcco:hasConfidenceScore 9e-01 ;
+    avcco:hasWeatherCondition avcco:Fog ;
+    prov:wasGeneratedBy ex:vehicleA_activity_1 .
+
+ex:Car1 a avcco:Car ;
+    avcco:hasColor "red",
+        "white" ;
+    avcco:isOccludedBy ex:Bus1 .
+
+ex:Cars a avcco:Car ;
+    avcco:hasColor "black" ;
+    avcco:isOccludedBy ex:Bus1 .
+
+ex:VehicleA a prov:Agent .
+
+ex:Bus1 a avcco:Bus ;
+    avcco:hasRelativePosition "front" .
+
+ex:vehicleA_activity_1 a prov:Activity ;
+    prov:wasAssociatedWith ex:VehicleA .
+
