@@ -1,3 +1,60 @@
+from transformers import Glm4vProcessor, Glm4vForConditionalGeneration
+from PIL import Image
+import torch
+import os
+
+MODEL_ID = "zai-org/GLM-OCR"
+PATCHED_DIR = "/tmp/glm_ocr_patched"  # processor loaded from here
+
+processor = None
+model = None
+
+def _load():
+    global processor, model
+    if model is not None:
+        return processor, model
+    print("Loading GLM-OCR model...")
+    processor = Glm4vProcessor.from_pretrained(PATCHED_DIR)
+    model = Glm4vForConditionalGeneration.from_pretrained(
+        MODEL_ID,
+        torch_dtype=torch.float16,
+        device_map="auto",
+    )
+    print(f"Model loaded on: {model.device}")
+    return processor, model
+
+def run_inference(image_paths, prompt):
+    proc, mdl = _load()
+    results = []
+    for path in image_paths:
+        image = Image.open(path).convert("RGB")
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": image},
+                    {"type": "text",  "text": prompt},
+                ],
+            }
+        ]
+        inputs = proc.apply_chat_template(
+            messages, add_generation_prompt=True, return_tensors="pt"
+        ).to(mdl.device)
+
+        with torch.no_grad():
+            output = mdl.generate(
+                **inputs,
+                max_new_tokens=512,
+                do_sample=False,
+                repetition_penalty=1.2,
+            )
+        decoded = proc.decode(output[0], skip_special_tokens=True)
+        print(f"  [RAW]: {repr(decoded[:300])}")
+        results.append(decoded)
+
+    return "\n".join(results)
+
+'''
 from transformers import AutoProcessor, AutoModelForImageTextToText
 from PIL import Image
 import torch
@@ -140,3 +197,4 @@ if __name__ == "__main__":
     # Use image
     image_path = "pic.png"
     extract_with_glm_ocr(image_path)
+'''
