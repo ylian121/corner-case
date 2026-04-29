@@ -15,10 +15,6 @@ import torch
 from rdflib import Graph, RDF, RDFS, OWL
 import weather_classifier_inference as uciclassifier
 
-# import 4 models
-# import moondream
-# import glm
-# import smolvlm
 import qwen
 
 import time
@@ -42,7 +38,7 @@ def log_metrics(scenario, weather, loop, img_path, prompt_text, raw_output, late
         "latency_s": round(latency, 4),
         "input_bytes": len(prompt_text.encode("utf-8")),
         "output_bytes": len(raw_output.encode("utf-8")) if raw_output else 0,
-        "prompt_tokens": len(prompt_text) // 4,       # rough estimate
+        "prompt_tokens": len(prompt_text) // 4,
         "completion_tokens": len(raw_output) // 4 if raw_output else 0,
         "success": status == "success",
         "error": error,
@@ -90,7 +86,7 @@ class BenchmarkTracker:
         ram_usage = psutil.virtual_memory().percent
         vram_usage = 0
         if torch.cuda.is_available():
-            vram_usage = torch.cuda.memory_allocated() / 1024**2 # Convert to MB
+            vram_usage = torch.cuda.memory_allocated() / 1024**2 
         return ram_usage, round(vram_usage, 2)
 
     def summarize_scenario(self, model_name, batch_size, loop_data):
@@ -116,9 +112,6 @@ class BenchmarkTracker:
 
 MODELS = {
     "Qwen": qwen,
-    # "GLM-OCR": glm,
-    # "Moondream": moondream,
-    # "SmolVLM": smolvlm,
 }
 '''
     "GLM-OCR": glm,
@@ -428,40 +421,6 @@ ex:Obs1 a avcco:Observation ;
 ```
 """
 '''
-'''
-prompt = f"""
-{prefixes}
-
-You are a perception sensor for an autonomous vehicle named 'VehicleA'. Your sole function is to detect corner cases and occlusions and generate low-level observational triples based on the provided images.
-
-CRITICAL INSTRUCTIONS:
-1.  USE THE PROVIDED ONTOLOGY: You have been provided with the full AV Corner Case Ontology (AVCCO) and PROV-O ontology. This is your **only allowed vocabulary**. You must strictly use only the classes, properties, and relationships defined therein.
-2.  DETECTION SCOPE: 
-    - Identify all possible **corner cases** (e.g., anomalies, near-collisions, occlusions, abnormal behaviors).
-    - Identify all **occlusion cases** (e.g., objects or vehicles partially/fully blocked from view).
-3.  PROVENANCE IS MANDATORY:
-    - Every observation **must** be attributed to this vehicle, 'VehicleA', using PROV-O properties.
-    - Create one `prov:Activity` (e.g., `:vehicleA_obs_activity_1`) associated with `:VehicleA` (a `prov:Agent` and `avcco:Vehicle`).
-    - Every `avcco:Observation` must be `prov:wasGeneratedBy` this activity.
-4.  ONLY GENERATE OBSERVATIONS:
-    - Generate only instances of `avcco:Observation` and their associated properties.
-    - You are **forbidden** from generating high-level fused `avcco:Situation` instances.
-5.  CONFIDENCE:
-    - Assign a confidence value (0.0–1.0) to each observation using `avcco:hasConfidenceScore`.
-6.  DIRECTIONAL CONTEXT (NEW):
-    - Infer the approximate **direction or orientation** of observed entities relative to 'VehicleA' 
-      (e.g., `avcco:hasDirection "north"`, `"east"`, `"south"`, `"west"`), based on image cues such as road alignment, shadows, and map compass overlays.
-7.  VEHICLE RELATIVE POSITION:
-    - If possible, include relative spatial terms such as `"front"`, `"rear"`, `"left"`, `"right"` using the property `avcco:hasRelativePosition`.
-8.  ONTOLOGY COMPLIANCE:
-    - Use only classes and properties defined in the AVCCO and PROV-O ontologies. Do not invent new ones.
-9.  OUTPUT FORMAT:
-    - Return only valid RDF triples in Turtle syntax using the provided prefixes.
-
-Ontology reference:
-{ontology_prompt}
-"""
-'''
 
 
 tracker = BenchmarkTracker(ttl_path)
@@ -522,7 +481,7 @@ for model_name, model_mod in MODELS.items():
                 cpu0 = time.process_time()
                 ram, vram = tracker.get_system_usage()
 
-                # --- FIX START ---
+                
                 status = "failed" # Set a default status so the code doesn't crash later
                 temp = Graph()
                 loop_raw_triples = ""
@@ -531,7 +490,7 @@ for model_name, model_mod in MODELS.items():
                     for img_path in selected_images:
                         print(f"  -> Processing: {os.path.basename(img_path)}")
                         
-                        t_img = time.time()  # ADD: per-image timer
+                        t_img = time.time()  # per-image timer
                         img_error = None
                         img_status = "failed"
                         single_output = ""
@@ -545,7 +504,7 @@ for model_name, model_mod in MODELS.items():
 
                         img_latency = time.time() - t_img
 
-                        # ADD: log after every single image
+                        # log after every single image
                         log_metrics(
                             scenario=scenario,
                             weather=weather,
@@ -566,23 +525,7 @@ for model_name, model_mod in MODELS.items():
                                 temp.parse(data=single_output, format='turtle')
                             except Exception as parse_err:
                                 print(f"      [!] Parse error on image: {parse_err}")
-                    '''
-                    # Process images one-by-one to avoid the Tensor Mismatch Error
-                    for img_path in selected_images: #selected_images:
-                        print(f"  -> Processing: {os.path.basename(img_path)}")
-                        # Pass image as a single-item list
-                        single_output = get_triples_from_local_model(model_mod, [img_path], prompt)
-                        
-                        if single_output:
-                            loop_raw_triples += "\n" + single_output
-                            # Parse into the temporary loop graph
-                            try:
-                                if not single_output.startswith("@prefix"):
-                                    single_output = prefixes + "\n" + single_output
-                                temp.parse(data=single_output, format='turtle')
-                            except Exception as parse_err:
-                                print(f"      [!] Parse error on image: {parse_err}")
-                    '''
+
                     status = "success" # Only set to success if the loop finishes
                     
                     
@@ -634,7 +577,7 @@ for model_name, model_mod in MODELS.items():
                 print(f"     Status:         {status}")
                 print(f"  -------------------------")
 
-                # Save logic...
+                # Save logic
                 loop_output_path = os.path.join("output", model_name, scenario, weather, str(loop + 1))
                 os.makedirs(loop_output_path, exist_ok=True)
                 
