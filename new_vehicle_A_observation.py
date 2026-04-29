@@ -6,7 +6,7 @@
 #            - RGB
 #            - LIDAR
 
-
+from PIL import Image
 import os
 import re
 import glob
@@ -16,14 +16,41 @@ from rdflib import Graph, RDF, RDFS, OWL
 import weather_classifier_inference as uciclassifier
 
 # import 4 models
+# import moondream
+# import glm
+# import smolvlm
 import qwen
-import moondream
-import glm
-import smolvlm
 
 import time
 import psutil
 
+import json
+from datetime import datetime, timezone
+
+METRICS_FILE = "output/qwen_metrics.jsonl"
+
+def log_metrics(scenario, weather, loop, img_path, prompt_text, raw_output, latency, status, error=None):
+    os.makedirs("output", exist_ok=True)
+    record = {
+        "scenario": scenario,
+        "weather": weather,
+        "loop": loop,
+        "batch_size": 1,
+        "model": "Qwen2-VL-2B",
+        "vehicle": "A",
+        "image": os.path.basename(img_path),
+        "latency_s": round(latency, 4),
+        "input_bytes": len(prompt_text.encode("utf-8")),
+        "output_bytes": len(raw_output.encode("utf-8")) if raw_output else 0,
+        "prompt_tokens": len(prompt_text) // 4,       # rough estimate
+        "completion_tokens": len(raw_output) // 4 if raw_output else 0,
+        "success": status == "success",
+        "error": error,
+        "ts": datetime.now(timezone.utc).isoformat()
+    }
+    with open(METRICS_FILE, "a") as f:
+        f.write(json.dumps(record) + "\n")
+    print(json.dumps(record))
 
 class BenchmarkTracker:
     def __init__(self, ontology_path):
@@ -89,12 +116,17 @@ class BenchmarkTracker:
 
 MODELS = {
     "Qwen": qwen,
-    "Moondream": moondream,
-    "GLM-OCR": glm,
-    "SmolVLM": smolvlm
+    # "GLM-OCR": glm,
+    # "Moondream": moondream,
+    # "SmolVLM": smolvlm,
 }
+'''
+    "GLM-OCR": glm,
+    "SmolVLM": smolvlm,
+    "Qwen": qwen,
+'''
 
-BATCH_SIZES = [1, 3, 5]
+BATCH_SIZES = [1]
 
 
 
@@ -211,8 +243,232 @@ def compute_avg_classifier_score(image_paths):
 
     return total_weighted_score / valid_image_count if valid_image_count > 0 else 0.0
 
+import re
+
+def _filter_turtle_lines(text: str) -> str:
+    text = re.sub(r"b'(.*?)'", r"\1", text)
+    text = re.sub(r'b"(.*?)"', r"\1", text)
+    valid_lines = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            valid_lines.append("")
+            continue
+        if (
+            stripped.startswith("@")
+            or stripped.startswith("PREFIX")
+            or stripped.startswith("<")
+            or stripped.startswith("#")
+            or re.search(r'\w:\w', stripped)
+            or re.fullmatch(r'[.,;{}]+', stripped)
+        ):
+            valid_lines.append(line)
+    return "\n".join(valid_lines).strip()
+
 
 def get_triples_from_local_model(model_mod, image_paths, prompt_text):
+    clean_output = ""
+    try:
+        rgb_image_paths = [
+            p for p in image_paths
+            if p.lower().endswith(('.png', '.jpg', '.jpeg'))
+        ]
+        if not rgb_image_paths:
+            return ""
+
+        # Single call — image + prompt together
+        raw_output = model_mod.run_inference(rgb_image_paths, prompt_text)
+        print(f"  [RAW]: {repr(raw_output[:300])}")
+
+        if not raw_output:
+            return ""
+
+        # Extract and clean
+        if "```turtle" in raw_output:
+            match = re.search(r'```turtle(.+?)```', raw_output, re.DOTALL)
+            clean_output = match.group(1).strip() if match else raw_output
+        elif "```" in raw_output:
+            match = re.search(r'```(.+?)```', raw_output, re.DOTALL)
+            clean_output = match.group(1).strip() if match else raw_output
+        else:
+            clean_output = raw_output.strip()
+
+        clean_output = _filter_turtle_lines(clean_output)
+        return clean_output.replace("ex/", "ex:")
+
+    except Exception as e:
+        print(f"  [ERROR] inference failed: {e}")
+        return ""
+
+'''
+def get_triples_from_local_model(model_mod, image_paths, prompt_text):
+    clean_output = ""
+    try:
+        # 1. Filter valid images, slice to 5 for now
+        rgb_image_paths = [
+            p for p in image_paths
+            if p.lower().endswith(('.png', '.jpg', '.jpeg'))
+        ][:5]
+        if not rgb_image_paths:
+            return ""
+
+        # 2. Qwen2-VL handles the full list in one call
+        raw_output = model_mod.run_inference(rgb_image_paths, prompt_text)
+        print(f"  [RAW]: {repr(raw_output[:300])}")
+
+        if not raw_output:
+            return ""
+
+        # 3. Extract Turtle block
+        if "```turtle" in raw_output:
+            match = re.search(r'```turtle(.+?)```', raw_output, re.DOTALL)
+            clean_output = match.group(1).strip() if match else raw_output
+        elif "```" in raw_output:
+            match = re.search(r'```(.+?)```', raw_output, re.DOTALL)
+            clean_output = match.group(1).strip() if match else raw_output
+        else:
+            clean_output = raw_output.strip()
+
+        clean_output = _filter_turtle_lines(clean_output)
+        return clean_output.replace("ex/", "ex:")
+
+    except Exception as e:
+        print(f"  [ERROR] Qwen2-VL inference failed: {e}")
+        return ""
+
+'''
+
+'''
+from PIL import Image
+import re
+import os
+
+# Shrink images before sending to the model
+MAX_IMAGE_DIM = 512  # Cap longest side at 512px for speed; raise to 768/1024 later
+
+def _resize_image(path: str, max_dim: int = MAX_IMAGE_DIM) -> Image.Image:
+    img = Image.open(path).convert("RGB")
+    w, h = img.size
+    if max(w, h) > max_dim:
+        scale = max_dim / max(w, h)
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    return img
+
+
+def get_triples_from_local_model(model_mod, image_paths, prompt_text):
+    clean_output = ""
+    try:
+        # 1. Filter valid images, take first 5 for smoke test
+        rgb_image_paths = [
+            p for p in image_paths
+            if p.lower().endswith(('.png', '.jpg', '.jpeg'))
+        ][:5]
+        if not rgb_image_paths:
+            return ""
+
+        # 2. run_inference handles _load() internally — don't call model_mod.processor directly
+        raw_output = model_mod.run_inference(rgb_image_paths, prompt_text)
+        print(f"  [RAW]: {repr(raw_output[:300])}")
+
+        if not raw_output:
+            return ""
+
+        # 3. Extract Turtle block
+        if "```turtle" in raw_output:
+            match = re.search(r'```turtle(.+?)```', raw_output, re.DOTALL)
+            clean_output = match.group(1).strip() if match else raw_output
+        elif "```" in raw_output:
+            match = re.search(r'```(.+?)```', raw_output, re.DOTALL)
+            clean_output = match.group(1).strip() if match else raw_output
+        else:
+            clean_output = raw_output.strip()
+
+        clean_output = _filter_turtle_lines(clean_output)
+        return clean_output.replace("ex/", "ex:")
+
+    except Exception as e:
+        print(f"  [ERROR] GLM-OCR inference failed: {e}")
+        return ""
+
+import re
+
+def _filter_turtle_lines(text: str) -> str:
+    """
+    Keep only lines that are valid Turtle RDF syntax.
+    Drops plain-English prose the model sometimes injects.
+    """
+    # Strip Python byte-string artifacts: b'...' or b"..."
+    text = re.sub(r"b'(.*?)'", r"\1", text)
+    text = re.sub(r'b"(.*?)"', r"\1", text)
+
+    valid_lines = []
+    for line in text.splitlines():
+        stripped = line.strip()
+
+        if not stripped:
+            valid_lines.append("")
+            continue
+
+        if (
+            stripped.startswith("@")              # @prefix, @base
+            or stripped.startswith("PREFIX")      # SPARQL-style prefix
+            or stripped.startswith("<")           # URI subject: <http://...>
+            or stripped.startswith("#")           # comment
+            or re.search(r'\w:\w', stripped)      # prefixed name: ex:Foo, rdf:type
+                                                  # "Entity: Foo" has space → no match ✓
+            or re.fullmatch(r'[.,;{}]+', stripped) # punctuation-only lines
+        ):
+            valid_lines.append(line)
+        # else: plain English prose → silently dropped
+
+    return "\n".join(valid_lines).strip()
+
+
+def get_triples_from_local_model(model_mod, image_paths, prompt_text):
+    """
+    Standardized bridge for SmolVLM.
+    SmolVLM handles the list of paths internally, so we just pass them through.
+    """
+    clean_output = ""
+
+    try:
+        # 1. Filter for valid images
+        rgb_image_paths = [
+            p for p in image_paths
+            if p.lower().endswith(('.png', '.jpg', '.jpeg'))
+        ]
+        if not rgb_image_paths:
+            return ""
+
+        # 2. Call SmolVLM's run_inference
+        raw_output = model_mod.run_inference(rgb_image_paths, prompt_text)
+
+        if not raw_output:
+            return ""
+
+        # 3. Extract triples from markdown code blocks
+        if "```turtle" in raw_output:
+            match = re.search(r'```turtle(.+?)```', raw_output, re.DOTALL)
+            clean_output = match.group(1).strip() if match else raw_output
+        elif "```" in raw_output:
+            match = re.search(r'```(.+?)```', raw_output, re.DOTALL)
+            clean_output = match.group(1).strip() if match else raw_output
+        else:
+            clean_output = raw_output.strip()
+
+        # 4. Drop any prose lines the model injected into the Turtle block
+        clean_output = _filter_turtle_lines(clean_output)
+
+        # 5. Ontology cleanup
+        return clean_output.replace("ex/", "ex:")
+
+    except Exception as e:
+        print(f"Error calling SmolVLM: {e}")
+        return ""
+
+
+def get_triples_from_local_model(model_mod, image_paths, prompt_text):
+
 
     # Standardized bridge to call local models and clean the Turtle output.
 
@@ -233,6 +489,14 @@ def get_triples_from_local_model(model_mod, image_paths, prompt_text):
         # Call the local model's standardized inference function
         raw_output = model_mod.run_inference(rgb_image_paths, prompt_text)
 
+        if "moondream" in model_mod.__name__.lower():
+            from PIL import Image
+            img = Image.open(rgb_image_paths[0])
+            raw_output = model_mod.run_inference(img, prompt_text)
+        else:
+            # Qwen and others handle the list of paths
+            raw_output = model_mod.run_inference(rgb_image_paths, prompt_text)
+
         if not raw_output:
             return ""
 
@@ -250,7 +514,7 @@ def get_triples_from_local_model(model_mod, image_paths, prompt_text):
     except Exception as e:
         print(f"Error calling {model_mod.__name__}: {e}")
         return ""
-
+'''
 
 
 
@@ -263,6 +527,68 @@ main_graph = Graph()
 # === Ontology & prompt setup ===
 ontology_prompt = extract_ontology_prompt(ttl_path)
 
+
+prompt = """You are an autonomous vehicle perception system analyzing a dashcam image.
+
+Detect and output ALL of the following as Turtle RDF triples:
+
+1. All visible vehicles (cars, buses, trucks) - type, color, position
+2. Weather conditions - fog, rain, clear
+3. Occlusions - any vehicle partially or fully blocked from view
+4. Corner cases - unusual situations, near collisions, abnormal behavior
+5. Road conditions and visibility
+
+Use these prefixes:
+@prefix avcco: <http://cornercase.org/avcco#> .
+@prefix ex: <http://cornercase.org/instances#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+Requirements:
+- Every entity gets a unique ID (ex:Car1, ex:Bus1, ex:Obs1 etc.)
+- Every observation needs avcco:hasConfidenceScore (0.0-1.0)
+- Every observation needs prov:wasGeneratedBy ex:vehicleA_activity_1
+- Include avcco:hasRelativePosition ("front"/"rear"/"left"/"right")
+- If a vehicle is occluded, link it: ex:Obs1 avcco:isOccludedBy ex:Bus1
+
+Start with ```turtle and end with ```. No prose. No explanation.
+
+Example:
+```turtle
+@prefix avcco: <http://cornercase.org/avcco#> .
+@prefix ex: <http://cornercase.org/instances#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+ex:vehicleA_activity_1 a prov:Activity ;
+    prov:wasAssociatedWith ex:VehicleA .
+
+ex:VehicleA a prov:Agent .
+
+ex:Obs1 a avcco:Observation ;
+    prov:wasGeneratedBy ex:vehicleA_activity_1 ;
+    avcco:hasConfidenceScore 0.85 ;
+    avcco:hasRelativePosition "front" ;
+    avcco:refersTo ex:Car1 .
+
+ex:Car1 a avcco:Car ;
+    avcco:hasColor "white" ;
+    avcco:isOccludedBy ex:Bus1 .
+
+ex:Bus1 a avcco:Bus ;
+    avcco:hasRelativePosition "front" .
+
+ex:WeatherObs1 a avcco:Observation ;
+    prov:wasGeneratedBy ex:vehicleA_activity_1 ;
+    avcco:hasConfidenceScore 0.9 ;
+    avcco:hasWeatherCondition avcco:Fog .
+```
+"""
+
+'''
+print(f"Ontology prompt length: {len(ontology_prompt)}")
+print(ontology_prompt[:300])
+
 prefixes = """
 @prefix avcco: <http://cornercase.org/avcco#> .
 @prefix ex:    <http://cornercase.org/instances#> .
@@ -273,6 +599,52 @@ prefixes = """
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 """
 
+perception_prompt = """Look at this driving scene image. List every object you can see.
+For each object write one line: OBJECT | COLOR | POSITION (front/rear/left/right) | VISIBILITY (clear/partial/blocked)
+Example:
+Car | white | front | partial
+Bus | yellow | left | clear
+Road | gray | front | clear
+
+Only output the list. No sentences."""
+
+
+def make_turtle_prompt(perception_output):
+    return f"""Convert this object list to Turtle RDF triples.
+
+Object list:
+{perception_output}
+
+Use exactly these prefixes:
+@prefix avcco: <http://cornercase.org/avcco#> .
+@prefix ex: <http://cornercase.org/instances#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+Rules:
+- Every object becomes an avcco:Observation
+- Use avcco:hasRelativePosition for position
+- Use avcco:hasConfidenceScore (0.0-1.0) based on visibility
+- Every observation must have prov:wasGeneratedBy ex:vehicleA_activity_1
+
+Start with ```turtle and end with ```. Nothing else.
+
+Example output:
+```turtle
+@prefix avcco: <http://cornercase.org/avcco#> .
+@prefix ex: <http://cornercase.org/instances#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+ex:vehicleA_activity_1 a prov:Activity ;
+    prov:wasAssociatedWith ex:VehicleA .
+
+ex:Obs1 a avcco:Observation ;
+    prov:wasGeneratedBy ex:vehicleA_activity_1 ;
+    avcco:hasRelativePosition "front" ;
+    avcco:hasConfidenceScore 0.7 .
+```
+"""
+'''
+'''
 prompt = f"""
 {prefixes}
 
@@ -305,6 +677,7 @@ CRITICAL INSTRUCTIONS:
 Ontology reference:
 {ontology_prompt}
 """
+'''
 
 
 tracker = BenchmarkTracker(ttl_path)
@@ -312,7 +685,7 @@ tracker = BenchmarkTracker(ttl_path)
 # For each scenario in the root
 for model_name, model_mod in MODELS.items():
 
-    scenario_stats = []
+    model_stats = []
 
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -355,7 +728,141 @@ for model_name, model_mod in MODELS.items():
                 glob.glob(os.path.join(rgbs_folder, "*.jpg"))
             )
 
+            while (loop * model_limit) < len(rgb_images):
+                print(f"Loop: {loop}, RGB images: {len(rgb_images)}")
 
+                start_idx = loop * model_limit
+                selected_images = rgb_images[start_idx : start_idx + model_limit]
+
+                t0 = time.time()
+                cpu0 = time.process_time()
+                ram, vram = tracker.get_system_usage()
+
+                # --- FIX START ---
+                status = "failed" # Set a default status so the code doesn't crash later
+                temp = Graph()
+                loop_raw_triples = ""
+
+                try:
+                    for img_path in selected_images:
+                        print(f"  -> Processing: {os.path.basename(img_path)}")
+                        
+                        t_img = time.time()  # ADD: per-image timer
+                        img_error = None
+                        img_status = "failed"
+                        single_output = ""
+
+                        try:
+                            single_output = get_triples_from_local_model(model_mod, [img_path], prompt)
+                            img_status = "success" if single_output else "failed"
+                        except Exception as e:
+                            img_error = str(e)
+                            img_status = "failed"
+
+                        img_latency = time.time() - t_img
+
+                        # ADD: log after every single image
+                        log_metrics(
+                            scenario=scenario,
+                            weather=weather,
+                            loop=loop,
+                            img_path=img_path,
+                            prompt_text=prompt,
+                            raw_output=single_output,
+                            latency=img_latency,
+                            status=img_status,
+                            error=img_error
+                        )
+
+                        if single_output:
+                            loop_raw_triples += "\n" + single_output
+                            try:
+                                if not single_output.startswith("@prefix"):
+                                    single_output = prefixes + "\n" + single_output
+                                temp.parse(data=single_output, format='turtle')
+                            except Exception as parse_err:
+                                print(f"      [!] Parse error on image: {parse_err}")
+                    '''
+                    # Process images one-by-one to avoid the Tensor Mismatch Error
+                    for img_path in selected_images: #selected_images:
+                        print(f"  -> Processing: {os.path.basename(img_path)}")
+                        # Pass image as a single-item list
+                        single_output = get_triples_from_local_model(model_mod, [img_path], prompt)
+                        
+                        if single_output:
+                            loop_raw_triples += "\n" + single_output
+                            # Parse into the temporary loop graph
+                            try:
+                                if not single_output.startswith("@prefix"):
+                                    single_output = prefixes + "\n" + single_output
+                                temp.parse(data=single_output, format='turtle')
+                            except Exception as parse_err:
+                                print(f"      [!] Parse error on image: {parse_err}")
+                    '''
+                    status = "success" # Only set to success if the loop finishes
+                    
+                    
+                except Exception as e:
+                    print(f"Inference failed: {e}")
+                    status = "failed"
+
+                latency = time.time() - t0
+                cpu_time = time.process_time() - cpu0
+
+                # Quality calculation
+                try:
+                    # Use the combined temp graph from all images in this batch
+                    f1, halluc, compliance = tracker.calculate_quality(temp)
+                except:
+                    f1, halluc, compliance = 0.0, 100.0, 0.0
+
+                # Now 'status' is guaranteed to exist
+                model_stats.append({
+                    "latency": latency,
+                    "cpu_time": cpu_time,
+                    "ram": ram,
+                    "f1": f1,
+                    "halluc": halluc,
+                    "comp": compliance,
+                    "status": status
+                })
+
+                # Confidence and Classifier scores
+                avg_confidence_score = compute_avg_confidence_score(loop_raw_triples) or 0.0
+                avg_classifier_score = compute_avg_classifier_score(selected_images) or 1.0
+                adjusted_score = avg_confidence_score / avg_classifier_score
+
+                # Add to the scenario's main graph
+                main_graph = main_graph + temp
+                print(f"Loop {loop} finished. Total triples in main graph: {len(main_graph)}")
+
+                # metrics
+                print(f"  -- Loop {loop} Metrics --")
+                print(f"     Latency:        {latency:.2f}s")
+                print(f"     CPU Time:       {cpu_time:.2f}s")
+                print(f"     RAM:            {ram:.1f} MB")
+                print(f"     F1:             {f1:.4f}")
+                print(f"     Hallucination:  {halluc:.2f}%")
+                print(f"     Compliance:     {compliance:.4f}")
+                print(f"     Confidence:     {avg_confidence_score:.4f}")
+                print(f"     Classifier:     {avg_classifier_score:.4f}")
+                print(f"     Adjusted Score: {adjusted_score:.4f}")
+                print(f"     Status:         {status}")
+                print(f"  -------------------------")
+
+                # Save logic...
+                loop_output_path = os.path.join("output", model_name, scenario, weather, str(loop + 1))
+                os.makedirs(loop_output_path, exist_ok=True)
+                
+                loop_output_file = os.path.join(loop_output_path, "vehicle_A_observations_loop.ttl")
+                temp.serialize(destination=loop_output_file, format='turtle')
+                
+                main_output_file = os.path.join(loop_output_path, "vehicle_A_observations.ttl")
+                main_graph.serialize(destination=main_output_file, format='turtle')
+
+                loop += 1
+
+            '''
                 # Get the next 5 RGB images and first loop LIDAR images
             while (loop * model_limit) < len(rgb_images):
 
@@ -443,8 +950,9 @@ for model_name, model_mod in MODELS.items():
 
                 print(f"Confidence score: {adjusted_score}. Continuing to next loop.")
                 loop += 1
+                '''
 
-    report = tracker.summarize_scenario(model_name, model_limit, scenario_stats)
+    report = tracker.summarize_scenario(model_name, model_limit, model_stats)
     print(report)
 
     
