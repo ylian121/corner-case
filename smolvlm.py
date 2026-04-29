@@ -19,44 +19,57 @@ model = AutoModelForVision2Seq.from_pretrained(
 
 def run_inference(image_paths, prompt):
     """
-    Standardized function for the main script.
-    Processes the batch of images provided by the main loop.
+    Standardized function for SmolVLM-256M.
+    Processes images one by one to ensure stability and returns a combined Turtle string.
     """
+    # 1. Ensure image_paths is a list (handles single string or list input)
+    if isinstance(image_paths, str):
+        image_paths = [image_paths]
+        
     results = []
     
     for path in image_paths:
-        # Load and convert image
-        image = load_image(path)
+        try:
+            # 2. Load and convert image using the transformer utility
+            # This handles resizing and normalization automatically
+            image = load_image(path)
 
-        # SmolVLM standard message format
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image"},
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ]
+            # 3. Format the conversation for SmolVLM Instruct
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image"},
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ]
 
-        # Prepare inputs
-        prompt_text = processor.apply_chat_template(messages, add_generation_prompt=True)
-        inputs = processor(text=prompt_text, images=[image], return_tensors="pt").to(device)
+            # 4. Prepare inputs for the model
+            prompt_text = processor.apply_chat_template(messages, add_generation_prompt=True)
+            inputs = processor(text=prompt_text, images=[image], return_tensors="pt").to(device)
 
-        # Generate
-        with torch.no_grad():
-            output_ids = model.generate(
-                **inputs,
-                max_new_tokens=512, # Increased for detailed RDF triples
-                do_sample=False,
-            )
+            # 5. Generate Response
+            with torch.no_grad():
+                output_ids = model.generate(
+                    **inputs,
+                    max_new_tokens=512, # Enough space for complex Turtle triples
+                    do_sample=False,    # Greedy decoding for consistent RDF output
+                )
 
-        # Decode and strip input tokens
-        generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
-        decoded = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        results.append(decoded.strip())
+            # 6. Decode output and remove the prompt tokens
+            generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
+            decoded = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+            
+            results.append(decoded.strip())
+            
+        except Exception as e:
+            print(f"Error processing image {path}: {e}")
+            # Append an empty string or error comment so the main loop keeps moving
+            results.append(f"# Error processing {path}")
 
-    # Join results with a newline so the RDF parser sees them as one continuous block
+    # 7. Join all results with newlines
+    # This allows the RDF parser to read all triples from the batch at once
     return "\n".join(results)
 
 '''
