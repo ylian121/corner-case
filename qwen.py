@@ -8,16 +8,12 @@ from qwen_vl_utils import process_vision_info
 MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct" 
 MAX_BATCH_SIZE = 5 
 
-quantization_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.float16
-)
+
 # Load once when imported
 print(f"Loading {MODEL_ID}...")
 
 model = Qwen2VLForConditionalGeneration.from_pretrained(
     MODEL_ID,
-    quantization_config=quantization_config,
     torch_dtype=torch.float16,
     device_map="auto",
     trust_remote_code=True
@@ -25,56 +21,56 @@ model = Qwen2VLForConditionalGeneration.from_pretrained(
 
 processor = AutoProcessor.from_pretrained(MODEL_ID, trust_remote_code=True)
 
-def run_inference(image_paths, prompt):
-    """
-    Standardized function to handle multiple images (Batch Size 1, 3, or 5).
-    """
 
+# print(f"Model device: {model.device}")
+
+from PIL import Image
+
+def resize_image(path, max_dim=512):
+    img = Image.open(path).convert("RGB")
+    w, h = img.size
+    if max(w, h) > max_dim:
+        scale = max_dim / max(w, h)
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    return img
+
+def run_inference(image_paths, prompt):
     content = []
     for path in image_paths:
-        content.append({"type": "image", "image": path})
-    
+        content.append({"type": "image", "image": resize_image(path)})
     content.append({"type": "text", "text": prompt})
 
-    messages = [
-        {
-            "role": "user",
-            "content": content
-        }
-    ]
-
-    # Qwen-specific template
+    messages = [{"role": "user", "content": content}]
     text = processor.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
     image_inputs, video_inputs = process_vision_info(messages)
-    
     inputs = processor(
-        text=[text],
-        images=image_inputs,
-        videos=video_inputs,
-        padding=True,
-        return_tensors="pt",
+        text=[text], images=image_inputs, videos=video_inputs,
+        padding=True, return_tensors="pt",
     ).to(model.device)
 
-    # Generate
-    with torch.no_grad():
-        generated_ids = model.generate(
-            **inputs, 
-            max_new_tokens=1024,
-            repetition_penalty=1.2
-        )
-    
-    # Output
+    try:
+        with torch.no_grad():
+            generated_ids = model.generate(
+                **inputs,
+                max_new_tokens=512,
+                do_sample=False,
+                repetition_penalty=1.1,
+            )
+    except Exception as e:
+        print(f"  [WARN] Generation failed: {e}, skipping batch")
+        return ""
+
     generated_ids_trimmed = [
-        out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        out_ids[len(in_ids):] 
+        for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
     ]
-    output_text = processor.batch_decode(
-        generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-    )
-
-    return output_text[0]
-
+    return processor.batch_decode(
+        generated_ids_trimmed,
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=False
+    )[0]
 
 '''
 import os
