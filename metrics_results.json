@@ -1,0 +1,445 @@
+{
+    "individual_results": [
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/1/vehicle_A_observations.ttl",
+            "triples": 14,
+            "compliance": 35.71,
+            "hallucination": 14.29,
+            "f1": 0.571,
+            "precision": 0.857,
+            "recall": 0.429
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/1/vehicle_A_observations_loop.ttl",
+            "triples": 14,
+            "compliance": 35.71,
+            "hallucination": 14.29,
+            "f1": 0.571,
+            "precision": 0.857,
+            "recall": 0.429
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/2/vehicle_A_observations.ttl",
+            "triples": 14,
+            "compliance": 35.71,
+            "hallucination": 14.29,
+            "f1": 0.571,
+            "precision": 0.857,
+            "recall": 0.429
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/2/vehicle_A_observations_loop.ttl",
+            "triples": 14,
+            "compliance": 35.71,
+            "hallucination": 14.29,
+            "f1": 0.571,
+            "precision": 0.857,
+            "recall": 0.429
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/3/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/3/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/4/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/4/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/5/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/5/vehicle_A_observations_loop.ttl",
+            "triples": 14,
+            "compliance": 35.71,
+            "hallucination": 14.29,
+            "f1": 0.571,
+            "precision": 0.857,
+            "recall": 0.429
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/6/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/6/vehicle_A_observations_loop.ttl",
+            "triples": 10,
+            "compliance": 40.0,
+            "hallucination": 20.0,
+            "f1": 0.421,
+            "precision": 0.8,
+            "recall": 0.286
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/7/vehicle_A_observations.ttl",
+            "triples": 37,
+            "compliance": 27.03,
+            "hallucination": 40.54,
+            "f1": 0.677,
+            "precision": 0.595,
+            "recall": 0.786
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/7/vehicle_A_observations_loop.ttl",
+            "triples": 34,
+            "compliance": 29.41,
+            "hallucination": 35.29,
+            "f1": 0.71,
+            "precision": 0.647,
+            "recall": 0.786
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/8/vehicle_A_observations.ttl",
+            "triples": 47,
+            "compliance": 27.66,
+            "hallucination": 53.19,
+            "f1": 0.587,
+            "precision": 0.468,
+            "recall": 0.786
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/day/8/vehicle_A_observations_loop.ttl",
+            "triples": 36,
+            "compliance": 30.56,
+            "hallucination": 50.0,
+            "f1": 0.563,
+            "precision": 0.5,
+            "recall": 0.643
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/1/vehicle_A_observations.ttl",
+            "triples": 21,
+            "compliance": 33.33,
+            "hallucination": 33.33,
+            "f1": 0.571,
+            "precision": 0.667,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/1/vehicle_A_observations_loop.ttl",
+            "triples": 21,
+            "compliance": 33.33,
+            "hallucination": 33.33,
+            "f1": 0.571,
+            "precision": 0.667,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/2/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 31.82,
+            "f1": 0.6,
+            "precision": 0.682,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/2/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 31.82,
+            "f1": 0.6,
+            "precision": 0.682,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/3/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 31.82,
+            "f1": 0.6,
+            "precision": 0.682,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/3/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 31.82,
+            "f1": 0.6,
+            "precision": 0.682,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/4/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 31.82,
+            "f1": 0.6,
+            "precision": 0.682,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/4/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 31.82,
+            "f1": 0.6,
+            "precision": 0.682,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/5/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 31.82,
+            "f1": 0.6,
+            "precision": 0.682,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/5/vehicle_A_observations_loop.ttl",
+            "triples": 10,
+            "compliance": 40.0,
+            "hallucination": 20.0,
+            "f1": 0.421,
+            "precision": 0.8,
+            "recall": 0.286
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/6/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 31.82,
+            "f1": 0.6,
+            "precision": 0.682,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/6/vehicle_A_observations_loop.ttl",
+            "triples": 10,
+            "compliance": 40.0,
+            "hallucination": 20.0,
+            "f1": 0.421,
+            "precision": 0.8,
+            "recall": 0.286
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/7/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 31.82,
+            "f1": 0.6,
+            "precision": 0.682,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/7/vehicle_A_observations_loop.ttl",
+            "triples": 21,
+            "compliance": 33.33,
+            "hallucination": 33.33,
+            "f1": 0.571,
+            "precision": 0.667,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/8/vehicle_A_observations.ttl",
+            "triples": 23,
+            "compliance": 30.43,
+            "hallucination": 34.78,
+            "f1": 0.588,
+            "precision": 0.652,
+            "recall": 0.536
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/fog/8/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/1/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/1/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/2/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/2/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/3/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/3/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/4/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/4/vehicle_A_observations_loop.ttl",
+            "triples": 21,
+            "compliance": 33.33,
+            "hallucination": 38.1,
+            "f1": 0.531,
+            "precision": 0.619,
+            "recall": 0.464
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/5/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/5/vehicle_A_observations_loop.ttl",
+            "triples": 14,
+            "compliance": 35.71,
+            "hallucination": 14.29,
+            "f1": 0.571,
+            "precision": 0.857,
+            "recall": 0.429
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/6/vehicle_A_observations.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 36.36,
+            "f1": 0.56,
+            "precision": 0.636,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/6/vehicle_A_observations_loop.ttl",
+            "triples": 10,
+            "compliance": 40.0,
+            "hallucination": 20.0,
+            "f1": 0.421,
+            "precision": 0.8,
+            "recall": 0.286
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/7/vehicle_A_observations.ttl",
+            "triples": 25,
+            "compliance": 32.0,
+            "hallucination": 44.0,
+            "f1": 0.528,
+            "precision": 0.56,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/7/vehicle_A_observations_loop.ttl",
+            "triples": 25,
+            "compliance": 32.0,
+            "hallucination": 44.0,
+            "f1": 0.528,
+            "precision": 0.56,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/8/vehicle_A_observations.ttl",
+            "triples": 26,
+            "compliance": 30.77,
+            "hallucination": 46.15,
+            "f1": 0.519,
+            "precision": 0.538,
+            "recall": 0.5
+        },
+        {
+            "file": "output/Qwen/bus_obscuring_car_second_car/night/8/vehicle_A_observations_loop.ttl",
+            "triples": 22,
+            "compliance": 31.82,
+            "hallucination": 40.91,
+            "f1": 0.52,
+            "precision": 0.591,
+            "recall": 0.464
+        }
+    ],
+    "overall_summary": {
+        "files_analyzed": 48,
+        "total_triples": 1033,
+        "avg_compliance": 32.81,
+        "avg_hallucination_rate": 32.52,
+        "avg_precision": 0.675,
+        "avg_recall": 0.5,
+        "avg_f1": 0.561
+    }
+}
