@@ -40,7 +40,7 @@ def image_to_rdf(image_path: str) -> str:
     enc_image = model.encode_image(image)
     result = model.answer_question(enc_image, PROMPT, tokenizer)
     return result
-
+'''
 def run_inference(image_paths, prompt):
     """Standardized function for the main script to call."""
     results = []
@@ -52,7 +52,33 @@ def run_inference(image_paths, prompt):
     
     # Combine results into one string for the RDF parser
     return "\n".join(results)
+'''
 
+from PIL import Image
+
+def run_inference(image_input, prompt):
+    try:
+        # 1. Handle image loading internally
+        if isinstance(image_input, str):
+            image = Image.open(image_input).convert("RGB")
+            image = image.resize((378, 378)) # Forces the tensor to stay small
+        else:
+            image = image_input # Assume it's already PIL
+
+        # 2. Call the correct method for 'HfMoondream'
+        # In many versions, the call is actually model.answer_question()
+        # or just model()
+        if hasattr(model, 'answer_question'):
+            return model.answer_question(image, prompt)
+        elif hasattr(model, 'generate'):
+            return model.generate(image, prompt)
+        else:
+            # Fallback for some wrappers that use direct call
+            return model(image, prompt)
+
+    except Exception as e:
+        print(f"Internal Moondream Error: {e}")
+        return ""
 if __name__ == "__main__":
     image_path = "pic.png" 
     print(f"Running Model: {MODEL_ID}\n")
