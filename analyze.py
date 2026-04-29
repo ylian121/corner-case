@@ -1,6 +1,7 @@
 import os
 import glob
 from rdflib import Graph, Namespace
+import json
 
 # Ensure namespaces are recognized for comparison
 AVCCO = Namespace("http://cornercase.org/avcco#")
@@ -103,3 +104,22 @@ if all_results:
     print(f"  Avg Precision     : {round(sum(r['precision'] for r in all_results)/n, 3)}")
     print(f"  Avg Recall        : {round(sum(r['recall'] for r in all_results)/n, 3)}")
     print(f"  Avg F1            : {round(sum(r['f1'] for r in all_results)/n, 3)}")
+
+
+output_json = {
+    "individual_results": all_results,
+    "overall_summary": {
+        "files_analyzed": n,
+        "total_triples": sum(r['triples'] for r in all_results),
+        "avg_compliance": round(sum(r['compliance'] for r in all_results)/n, 2),
+        "avg_hallucination_rate": round(sum(r['hallucination'] for r in all_results)/n, 2),
+        "avg_precision": round(sum(r['precision'] for r in all_results)/n, 3),
+        "avg_recall": round(sum(r['recall'] for r in all_results)/n, 3),
+        "avg_f1": round(sum(r['f1'] for r in all_results)/n, 3)
+    }
+}
+
+with open("metrics_results.json", "w") as f:
+    json.dump(output_json, f, indent=4)
+
+print("Results saved to metrics_results.json")
