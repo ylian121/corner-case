@@ -79,7 +79,7 @@ from PIL import Image
 import torch
 
 # HF token for faster downloads
-os.environ["HF_TOKEN"] = "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"
+os.environ["HF_TOKEN"] = "---"
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
 def extract_rdf_from_image(image_path="pic.png"):
